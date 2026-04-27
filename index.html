@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Color Sort Fun!</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
+  body {
+    font-family: 'Nunito', sans-serif; background: #FFF8E7;
+    width: 100vw; height: 100vh; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* SCREENS */
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .screen.hidden { display: none !important; }
+
+  /* START */
+  #start-screen { background: linear-gradient(160deg, #FFF8E7 0%, #FFE9C8 100%); gap: 40px; }
+  .game-title {
+    font-family: 'Fredoka One', cursive; font-size: 72px; color: #FF7043;
+    text-shadow: 4px 4px 0 #FFD180, 6px 6px 0 rgba(0,0,0,0.1);
+    letter-spacing: 2px; text-align: center; line-height: 1.1;
+  }
+  .subtitle { font-size: 26px; color: #888; font-weight: 700; }
+  .level-buttons { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; }
+  .level-btn {
+    width: 160px; height: 160px; border-radius: 32px; border: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; font-family: 'Fredoka One', cursive; color: white;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.15), 0 12px 24px rgba(0,0,0,0.1);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .level-btn:active { transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.15); }
+  .level-btn.easy   { background: linear-gradient(145deg, #56E39F, #1DB954); }
+  .level-btn.medium { background: linear-gradient(145deg, #FFB347, #FF7F00); }
+  .level-btn.hard   { background: linear-gradient(145deg, #FF6B9D, #C0024E); }
+  .stars { font-size: 28px; letter-spacing: 2px; }
+  .level-label { font-size: 18px; }
+
+  /* GAME */
+  #game-screen {
+    background: linear-gradient(180deg, #E8F4FD 0%, #D0ECFD 40%, #C8F5D0 100%);
+    flex-direction: column; justify-content: flex-start; padding: 0;
+    position: absolute; inset: 0;
+  }
+  #game-header {
+    width: 100%; padding: 14px 24px 8px;
+    display: flex; align-items: center; gap: 16px; flex-shrink: 0;
+  }
+  #back-btn {
+    width: 52px; height: 52px; border-radius: 50%; border: none; background: white;
+    font-size: 22px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #level-indicator { font-family: 'Fredoka One', cursive; font-size: 22px; color: #666; }
+
+  /* DEMO */
+  #demo-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 100;
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 24px;
+  }
+  #demo-overlay.hidden { display: none; }
+  .demo-bubble {
+    background: white; border-radius: 28px; padding: 24px 36px; max-width: 480px;
+    text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .demo-bubble h2 { font-family: 'Fredoka One', cursive; font-size: 32px; color: #FF7043; margin-bottom: 8px; }
+  .demo-bubble p  { font-size: 20px; color: #555; line-height: 1.5; }
+  #demo-start-btn {
+    background: linear-gradient(145deg, #56E39F, #1DB954); color: white;
+    font-family: 'Fredoka One', cursive; font-size: 26px; border: none; border-radius: 50px;
+    padding: 16px 48px; cursor: pointer;
+    box-shadow: 0 6px 0 #198042, 0 10px 20px rgba(0,0,0,0.2);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  #demo-start-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #198042; }
+  .demo-arrow { font-size: 48px; animation: demobounce 1s infinite; }
+  @keyframes demobounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+  /* PLAY AREA */
+  #play-area {
+    flex: 1; position: relative; width: 100%; min-height: 0;
+  }
+
+  /* VEHICLES — absolutely positioned inside #play-area */
+  .vehicle {
+    position: absolute; cursor: grab; user-select: none; z-index: 5; touch-action: none;
+  }
+  .vehicle svg { display: block; width: 100%; height: 100%; }
+  .vehicle.dragging { cursor: grabbing; z-index: 50; filter: drop-shadow(0 10px 16px rgba(0,0,0,0.3)); transform: scale(1.12); }
+  .vehicle.wrong-shake { animation: shake 0.45s; }
+  @keyframes shake {
+    0%,100%{transform:translateX(0) scale(1);}
+    20%{transform:translateX(-14px) scale(1.05) rotate(-3deg);}
+    40%{transform:translateX(14px) scale(1.05) rotate(3deg);}
+    60%{transform:translateX(-9px) scale(1.05) rotate(-2deg);}
+    80%{transform:translateX(9px) scale(1.05) rotate(2deg);}
+  }
+  @keyframes hint-bounce {
+    0%{transform:scale(1);} 30%{transform:scale(1.18) rotate(-5deg);} 60%{transform:scale(1.12) rotate(4deg);} 100%{transform:scale(1);}
+  }
+  @keyframes pop { from{transform:scale(0.5);opacity:0;} to{transform:scale(1);opacity:1;} }
+
+  /* BASKETS — fixed height strip at bottom of play-area */
+  #baskets-area {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 150px;
+    display: flex; justify-content: space-around; align-items: flex-end;
+    padding: 0 16px 16px;
+  }
+  .basket {
+    flex: 1; max-width: 150px; height: 130px;
+    position: relative; transition: transform 0.2s, filter 0.2s; cursor: default;
+  }
+  .basket svg { width: 100%; height: 100%; display: block; }
+  .basket.hover { transform: scale(1.08); filter: brightness(1.1); }
+
+  /* WIN */
+  #win-screen {
+    background: linear-gradient(160deg, #FFF8E7 0%, #FFECD0 100%);
+    gap: 30px; z-index: 200; animation: fadein 0.5s;
+  }
+  @keyframes fadein { from{opacity:0} to{opacity:1} }
+  .win-title {
+    font-family: 'Fredoka One', cursive; font-size: 64px; color: #FF7043;
+    text-shadow: 3px 3px 0 #FFD180; animation: pop 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .win-buttons { display: flex; gap: 32px; }
+  .win-btn {
+    width: 130px; height: 130px; border-radius: 30px; border: none; cursor: pointer; font-size: 52px;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.15), 0 12px 24px rgba(0,0,0,0.1);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .win-btn:active { transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.15); }
+  .win-btn.home { background: linear-gradient(145deg, #74C0FC, #228BE6); }
+  .win-btn.next { background: linear-gradient(145deg, #69DB7C, #2F9E44); }
+
+  /* FIREWORKS */
+  #fireworks-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 150; }
+  #fireworks-canvas.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<!-- START SCREEN -->
+<div id="start-screen" class="screen">
+  <div class="game-title">&#127912; Color<br>Sort!</div>
+  <div class="subtitle">Choose a level to start!</div>
+  <div class="level-buttons">
+    <button class="level-btn easy"   onclick="startGame(1)"><div class="stars">&#11088;</div><div class="level-label">Easy</div></button>
+    <button class="level-btn medium" onclick="startGame(2)"><div class="stars">&#11088;&#11088;</div><div class="level-label">Medium</div></button>
+    <button class="level-btn hard"   onclick="startGame(3)"><div class="stars">&#11088;&#11088;&#11088;</div><div class="level-label">Hard</div></button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen" class="screen hidden">
+  <div id="game-header">
+    <button id="back-btn" onclick="goHome()">&#127968;</button>
+    <div id="level-indicator">&#11088; Easy Level</div>
+  </div>
+  <div id="demo-overlay">
+    <div class="demo-bubble">
+      <h2>&#127919; How to Play!</h2>
+      <p>Drag each vehicle to the basket with the <strong>same color</strong>!</p>
+    </div>
+    <div class="demo-arrow">&#128071;</div>
+    <button id="demo-start-btn" onclick="dismissDemo()">Let's Go! &#128640;</button>
+  </div>
+  <div id="play-area">
+    <div id="baskets-area"></div>
+  </div>
+</div>
+
+<!-- WIN SCREEN -->
+<div id="win-screen" class="screen hidden">
+  <div class="win-title">&#127881; Amazing! &#127881;</div>
+  <div style="font-size:32px;color:#888;font-weight:700;">You sorted everything!</div>
+  <div class="win-buttons">
+    <button class="win-btn home" onclick="goHome()">&#127968;</button>
+    <button id="next-btn" class="win-btn next" onclick="goNextLevel()">&#9654;&#65039;</button>
+  </div>
+</div>
+
+<canvas id="fireworks-canvas" class="hidden"></canvas>
+
+<script>
+// ── AUDIO CONTEXT ────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let actx;
+function getCtx() { if (!actx) actx = new AudioCtx(); return actx; }
+
+// ── BGM ──────────────────────────────────────────
+// bgmEl is created fresh on first user tap to satisfy Safari autoplay policy
+
+
+
+
+
+function playSuccess() {
+  const a = getCtx();
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.frequency.value = f; o.type = 'sine';
+    const t = a.currentTime + i * 0.12;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.35, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    o.start(t); o.stop(t + 0.4);
+  });
+}
+function playError() {
+  const a = getCtx();
+  [220, 180].forEach((f, i) => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.frequency.value = f; o.type = 'sawtooth';
+    const t = a.currentTime + i * 0.15;
+    g.gain.setValueAtTime(0.25, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    o.start(t); o.stop(t + 0.25);
+  });
+}
+function playCelebration() {
+  const a = getCtx();
+  const notes = [523,659,784,1047,784,659,784,1047,1319];
+  const times = [0,0.15,0.3,0.45,0.6,0.75,0.85,0.95,1.1];
+  notes.forEach((f, i) => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.frequency.value = f; o.type = 'sine';
+    const t = a.currentTime + times[i];
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.4, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    o.start(t); o.stop(t + 0.4);
+  });
+}
+
+// ── CONFIG ────────────────────────────────────────
+const COLORS_BY_LEVEL = {
+  1: ['red','green','blue'],
+  2: ['red','green','blue'],
+  3: ['red','green','blue','yellow']
+};
+const COLOR_HEX  = { red:'#FF4B4B', green:'#3CC84A', blue:'#3B9EFF', yellow:'#FFD700' };
+const COLOR_DARK = { red:'#CC0000', green:'#1A8A28', blue:'#0060CC', yellow:'#B8860B' };
+const LEVEL_CONFIG = {
+  1: [{type:'car',count:4}],
+  2: [{type:'car',count:3},{type:'airplane',count:2},{type:'bicycle',count:1}],
+  3: [{type:'car',count:3},{type:'airplane',count:2},{type:'bicycle',count:1}]
+};
+function vehicleSize(type) {
+  return type==='airplane' ? {w:120,h:70} : type==='bicycle' ? {w:110,h:75} : {w:110,h:70};
+}
+
+// ── SVGs ──────────────────────────────────────────
+function carSVG(c) {
+  const h=COLOR_HEX[c],d=COLOR_DARK[c];
+  return `<svg viewBox="0 0 110 70" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="28" width="100" height="30" rx="8" fill="${h}"/>
+    <path d="M28 28 Q32 12 42 10 L72 10 Q82 12 84 28 Z" fill="${d}"/>
+    <path d="M34 28 Q36 16 42 14 L56 14 L54 28 Z" fill="#CCE8FF" opacity="0.85"/>
+    <path d="M57 28 L57 14 L70 14 Q78 16 80 28 Z" fill="#CCE8FF" opacity="0.85"/>
+    <circle cx="27" cy="56" r="12" fill="#333"/><circle cx="27" cy="56" r="6" fill="#888"/>
+    <circle cx="83" cy="56" r="12" fill="#333"/><circle cx="83" cy="56" r="6" fill="#888"/>
+    <rect x="2" y="38" width="10" height="12" rx="4" fill="${d}"/>
+    <rect x="98" y="38" width="10" height="12" rx="4" fill="${d}"/>
+    <rect x="98" y="40" width="8" height="6" rx="2" fill="#FFFACD"/>
+  </svg>`;
+}
+function airplaneSVG(c) {
+  const h=COLOR_HEX[c],d=COLOR_DARK[c];
+  return `<svg viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg">
+    <path d="M55 33 L26 6 L68 28 Z" fill="${d}"/>
+    <path d="M55 37 L26 64 L68 42 Z" fill="${d}" opacity="0.75"/>
+    <path d="M14 34 L14 16 L28 34 Z" fill="${d}"/>
+    <path d="M16 36 L6 48 L30 38 Z" fill="${d}" opacity="0.8"/>
+    <rect x="14" y="28" width="88" height="14" rx="7" fill="${h}"/>
+    <path d="M98 28 Q116 35 98 42 Z" fill="${d}"/>
+    <rect x="52" y="31" width="9" height="8" rx="3" fill="white" opacity="0.85"/>
+    <rect x="65" y="31" width="9" height="8" rx="3" fill="white" opacity="0.85"/>
+    <rect x="78" y="31" width="9" height="8" rx="3" fill="white" opacity="0.85"/>
+  </svg>`;
+}
+function bicycleSVG(c) {
+  const h=COLOR_HEX[c],d=COLOR_DARK[c];
+  return `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="28" cy="52" r="20" fill="none" stroke="#333" stroke-width="5"/>
+    <circle cx="28" cy="52" r="5" fill="#555"/>
+    <circle cx="82" cy="52" r="20" fill="none" stroke="#333" stroke-width="5"/>
+    <circle cx="82" cy="52" r="5" fill="#555"/>
+    <line x1="28" y1="32" x2="28" y2="72" stroke="#666" stroke-width="2"/>
+    <line x1="8" y1="52" x2="48" y2="52" stroke="#666" stroke-width="2"/>
+    <line x1="82" y1="32" x2="82" y2="72" stroke="#666" stroke-width="2"/>
+    <line x1="62" y1="52" x2="102" y2="52" stroke="#666" stroke-width="2"/>
+    <line x1="28" y1="52" x2="55" y2="25" stroke="${h}" stroke-width="5" stroke-linecap="round"/>
+    <line x1="55" y1="25" x2="82" y2="52" stroke="${h}" stroke-width="5" stroke-linecap="round"/>
+    <line x1="55" y1="25" x2="45" y2="52" stroke="${h}" stroke-width="4" stroke-linecap="round"/>
+    <line x1="45" y1="52" x2="28" y2="52" stroke="${h}" stroke-width="4" stroke-linecap="round"/>
+    <line x1="50" y1="25" x2="50" y2="14" stroke="${d}" stroke-width="4" stroke-linecap="round"/>
+    <rect x="40" y="11" width="22" height="6" rx="3" fill="${d}"/>
+    <line x1="73" y1="30" x2="73" y2="18" stroke="${d}" stroke-width="4" stroke-linecap="round"/>
+    <path d="M66 18 Q73 14 80 18" fill="none" stroke="${d}" stroke-width="4" stroke-linecap="round"/>
+  </svg>`;
+}
+function basketSVG(c) {
+  const h=COLOR_HEX[c],d=COLOR_DARK[c];
+  return `<svg viewBox="0 0 140 130" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 40 Q10 120 70 125 Q130 120 130 40 Z" fill="${h}"/>
+    <defs><pattern id="sp_${c}" patternUnits="userSpaceOnUse" width="16" height="16" patternTransform="rotate(45)">
+      <rect width="8" height="16" fill="white"/></pattern></defs>
+    <path d="M10 40 Q10 120 70 125 Q130 120 130 40 Z" fill="url(#sp_${c})" opacity="0.15"/>
+    <rect x="6" y="32" width="128" height="18" rx="9" fill="${d}"/>
+    <path d="M30 32 Q20 10 35 8 Q50 6 45 32" fill="none" stroke="${d}" stroke-width="8" stroke-linecap="round"/>
+    <path d="M110 32 Q120 10 105 8 Q90 6 95 32" fill="none" stroke="${d}" stroke-width="8" stroke-linecap="round"/>
+    <ellipse cx="70" cy="90" rx="30" ry="8" fill="white" opacity="0.12"/>
+  </svg>`;
+}
+function vehicleSVG(type,color) {
+  return type==='car' ? carSVG(color) : type==='airplane' ? airplaneSVG(color) : bicycleSVG(color);
+}
+
+// ── GAME STATE ────────────────────────────────────
+let currentLevel=1, vehicles=[], baskets=[], dragging=null;
+let dragOffX=0, dragOffY=0, placedCount=0, totalWrongCount=0, hintMode=false;
+
+// ── START / RENDER ────────────────────────────────
+function startGame(level) {
+  currentLevel=level; vehicles=[]; baskets=[]; dragging=null;
+  placedCount=0; totalWrongCount=0; hintMode=false;
+
+  // Remove any leftover vehicle elements
+  document.querySelectorAll('.vehicle').forEach(el => el.remove());
+
+  showScreen('game-screen');
+  document.getElementById('level-indicator').textContent =
+    level===1 ? '⭐ Easy Level' : level===2 ? '⭐⭐ Medium Level' : '⭐⭐⭐ Hard Level';
+  document.getElementById('demo-overlay').classList.remove('hidden');
+
+  // Render baskets first
+  const basketsArea = document.getElementById('baskets-area');
+  basketsArea.innerHTML = '';
+  const levelColors = COLORS_BY_LEVEL[level];
+  levelColors.forEach(color => {
+    const el = document.createElement('div');
+    el.className = 'basket'; el.dataset.color = color;
+    el.innerHTML = basketSVG(color);
+    basketsArea.appendChild(el);
+  });
+
+  // Build vehicle list
+  const config = LEVEL_CONFIG[level] || [];
+  const list = [];
+  levelColors.forEach(color => {
+    config.forEach(({type,count}) => { for(let i=0;i<count;i++) list.push({type,color}); });
+  });
+  for(let i=list.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1)); [list[i],list[j]]=[list[j],list[i]];
+  }
+
+  // Double rAF to ensure layout is fully painted before measuring
+  requestAnimationFrame(() => requestAnimationFrame(() => placeVehicles(list)));
+}
+
+function placeVehicles(list) {
+  const playArea    = document.getElementById('play-area');
+  const basketsArea = document.getElementById('baskets-area');
+  const par = playArea.getBoundingClientRect();
+  const bsr = basketsArea.getBoundingClientRect();
+
+  // Snapshot basket positions (absolute page coords)
+  baskets = [];
+  basketsArea.querySelectorAll('.basket').forEach(el => {
+    const r = el.getBoundingClientRect();
+    baskets.push({el, color:el.dataset.color, x:r.left, y:r.top, w:r.width, h:r.height});
+  });
+
+  // Vehicles spawn in the area above the baskets
+  const spawnH = bsr.top - par.top;  // height available above baskets
+  const PAD = 14;
+  const placed = [];
+
+  list.forEach(v => {
+    const {w,h} = vehicleSize(v.type);
+    let x, y, ok, tries=0;
+    do {
+      x = PAD + Math.random() * (par.width  - w - PAD*2);
+      y = PAD + Math.random() * (spawnH - h - PAD*2);
+      ok = placed.every(p =>
+        x+w+PAD < p.x || x > p.x+p.w+PAD ||
+        y+h+PAD < p.y || y > p.y+p.h+PAD
+      );
+      tries++;
+    } while(!ok && tries<1000);
+    placed.push({x,y,w,h});
+
+    const el = document.createElement('div');
+    el.className = 'vehicle';
+    el.style.width  = w+'px'; el.style.height = h+'px';
+    el.style.left   = x+'px'; el.style.top    = y+'px';
+    el.innerHTML = vehicleSVG(v.type, v.color);
+    playArea.appendChild(el);
+
+    const obj = {el, color:v.color, type:v.type, origX:x, origY:y, w, h, placed:false};
+    vehicles.push(obj);
+    el.addEventListener('mousedown',  e => startDrag(e, obj));
+    el.addEventListener('touchstart', e => startDrag(e, obj), {passive:false});
+  });
+}
+
+// ── DRAG ──────────────────────────────────────────
+function getPos(e) {
+  return e.touches ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : {x:e.clientX,y:e.clientY};
+}
+function startDrag(e, obj) {
+  if(obj.placed||dragging) return;
+  e.preventDefault();
+  getCtx();
+  dragging=obj;
+  const pos=getPos(e), rect=obj.el.getBoundingClientRect();
+  dragOffX=pos.x-rect.left; dragOffY=pos.y-rect.top;
+  obj.el.classList.add('dragging');
+  obj.el.style.transition='';
+  document.addEventListener('mousemove',onDrag);
+  document.addEventListener('mouseup',endDrag);
+  document.addEventListener('touchmove',onDrag,{passive:false});
+  document.addEventListener('touchend',endDrag);
+}
+function onDrag(e) {
+  if(!dragging) return;
+  e.preventDefault();
+  const pos=getPos(e);
+  const par=document.getElementById('play-area').getBoundingClientRect();
+  dragging.el.style.left=(pos.x-par.left-dragOffX)+'px';
+  dragging.el.style.top =(pos.y-par.top -dragOffY)+'px';
+  const r=dragging.el.getBoundingClientRect();
+  const cx=r.left+r.width/2, cy=r.top+r.height/2;
+  baskets.forEach(b => b.el.classList.toggle('hover', cx>b.x&&cx<b.x+b.w&&cy>b.y&&cy<b.y+b.h));
+}
+function endDrag() {
+  if(!dragging) return;
+  document.removeEventListener('mousemove',onDrag);
+  document.removeEventListener('mouseup',endDrag);
+  document.removeEventListener('touchmove',onDrag);
+  document.removeEventListener('touchend',endDrag);
+  baskets.forEach(b=>b.el.classList.remove('hover'));
+
+  const r=dragging.el.getBoundingClientRect();
+  const cx=r.left+r.width/2, cy=r.top+r.height/2;
+  const dropped=baskets.find(b=>cx>b.x&&cx<b.x+b.w&&cy>b.y&&cy<b.y+b.h)||null;
+  const obj=dragging; dragging=null;
+  obj.el.classList.remove('dragging');
+
+  if(dropped && dropped.color===obj.color) {
+    // CORRECT — pop and vanish
+    playSuccess();
+    obj.placed=true;
+    obj.el.style.pointerEvents='none';
+    obj.el.style.transition='transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+    obj.el.style.transform='scale(1.3)';
+    setTimeout(()=>{
+      obj.el.style.transition='transform 0.22s ease-in, opacity 0.22s ease-in';
+      obj.el.style.transform='scale(0)'; obj.el.style.opacity='0';
+    }, 220);
+    placedCount++;
+    if(placedCount===vehicles.length) setTimeout(triggerWin,700);
+
+  } else if(dropped) {
+    // WRONG
+    playError();
+    totalWrongCount++;
+    obj.el.classList.add('wrong-shake');
+    obj.el.style.transition='left 0.4s cubic-bezier(0.34,1.3,0.64,1),top 0.4s cubic-bezier(0.34,1.3,0.64,1)';
+    obj.el.style.left=obj.origX+'px'; obj.el.style.top=obj.origY+'px';
+    setTimeout(()=>{
+      obj.el.classList.remove('wrong-shake');
+      obj.el.style.transition='';
+      if(totalWrongCount>=5||hintMode){ hintMode=true; totalWrongCount=0; showHint(obj); }
+    },500);
+
+  } else {
+    obj.el.style.transition='left 0.4s cubic-bezier(0.34,1.3,0.64,1),top 0.4s cubic-bezier(0.34,1.3,0.64,1)';
+    obj.el.style.left=obj.origX+'px'; obj.el.style.top=obj.origY+'px';
+    setTimeout(()=>{ obj.el.style.transition=''; },500);
+  }
+}
+
+// ── HINT ──────────────────────────────────────────
+function showHint(obj) {
+  const target=baskets.find(b=>b.color===obj.color); if(!target) return;
+  const par=document.getElementById('play-area').getBoundingClientRect();
+  const destX=target.x-par.left+target.w/2-obj.w/2;
+  const destY=target.y-par.top +target.h/2-obj.h/2;
+  obj.el.style.transition='left 0.55s cubic-bezier(0.34,1.3,0.64,1),top 0.55s cubic-bezier(0.34,1.3,0.64,1)';
+  obj.el.style.left=destX+'px'; obj.el.style.top=destY+'px';
+  setTimeout(()=>{ obj.el.style.animation='hint-bounce 0.4s ease'; },580);
+  setTimeout(()=>{
+    obj.el.style.animation='';
+    obj.el.style.transition='left 0.5s cubic-bezier(0.34,1.3,0.64,1),top 0.5s cubic-bezier(0.34,1.3,0.64,1)';
+    obj.el.style.left=obj.origX+'px'; obj.el.style.top=obj.origY+'px';
+  },1100);
+  setTimeout(()=>{ obj.el.style.transition=''; },1700);
+}
+
+// ── WIN ───────────────────────────────────────────
+function triggerWin() {
+   playCelebration(); showFireworks();
+  document.getElementById('next-btn').style.display=currentLevel<3?'':'none';
+  setTimeout(()=>{ showScreen('win-screen'); stopFireworks(); },3500);
+}
+
+// ── FIREWORKS ─────────────────────────────────────
+let fwAnimId=null, fwParticles=[];
+function showFireworks() {
+  const canvas=document.getElementById('fireworks-canvas');
+  canvas.classList.remove('hidden');
+  canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+  const ctx2=canvas.getContext('2d'); fwParticles=[];
+  function launch() {
+    const x=100+Math.random()*(canvas.width-200), y=80+Math.random()*(canvas.height*0.45);
+    const col=['#FF4B4B','#3CC84A','#3B9EFF','#FFD700','#FF69B4','#FF7F00'][Math.floor(Math.random()*6)];
+    for(let i=0;i<55;i++){
+      const angle=(Math.PI*2/55)*i, speed=3+Math.random()*5;
+      fwParticles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,alpha:1,color:col,r:3+Math.random()*2});
+    }
+  }
+  let timer=0;
+  function animate() {
+    ctx2.clearRect(0,0,canvas.width,canvas.height);
+    if(++timer%25===0) launch();
+    fwParticles=fwParticles.filter(p=>p.alpha>0.02);
+    fwParticles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.08; p.alpha-=0.018;
+      ctx2.save(); ctx2.globalAlpha=p.alpha; ctx2.fillStyle=p.color;
+      ctx2.beginPath(); ctx2.arc(p.x,p.y,p.r,0,Math.PI*2); ctx2.fill(); ctx2.restore();
+    });
+    fwAnimId=requestAnimationFrame(animate);
+  }
+  launch(); launch(); animate();
+}
+function stopFireworks() {
+  cancelAnimationFrame(fwAnimId);
+  document.getElementById('fireworks-canvas').classList.add('hidden');
+}
+
+// ── NAVIGATION ────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+function goHome()      { stopFireworks();  document.querySelectorAll('.vehicle').forEach(el=>el.remove()); showScreen('start-screen'); }
+function goNextLevel() { stopFireworks();  startGame(currentLevel+1); }
+function dismissDemo() {
+  document.getElementById('demo-overlay').classList.add('hidden');
+}
+</script>
+</body>
+</html>
