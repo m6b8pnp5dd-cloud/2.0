@@ -151,16 +151,16 @@
   <div class="game-title">&#127912; Color<br>Sort!</div>
   <div class="subtitle">Choose a level to start!</div>
   <div class="level-buttons">
-    <button class="level-btn easy"   onclick="startGame(1)"><div class="stars">&#11088;</div><div class="level-label">Easy</div></button>
-    <button class="level-btn medium" onclick="startGame(2)"><div class="stars">&#11088;&#11088;</div><div class="level-label">Medium</div></button>
-    <button class="level-btn hard"   onclick="startGame(3)"><div class="stars">&#11088;&#11088;&#11088;</div><div class="level-label">Hard</div></button>
+    <button class="level-btn easy"   onclick="playSoundEasy();   startGame(1)"><div class="stars">&#11088;</div><div class="level-label">Easy</div></button>
+    <button class="level-btn medium" onclick="playSoundMedium(); startGame(2)"><div class="stars">&#11088;&#11088;</div><div class="level-label">Medium</div></button>
+    <button class="level-btn hard"   onclick="playSoundHard();   startGame(3)"><div class="stars">&#11088;&#11088;&#11088;</div><div class="level-label">Hard</div></button>
   </div>
 </div>
 
 <!-- GAME SCREEN -->
 <div id="game-screen" class="screen hidden">
   <div id="game-header">
-    <button id="back-btn" onclick="goHome()">&#127968;</button>
+    <button id="back-btn" onclick="playSoundHome(); goHome()">&#127968;</button>
     <div id="level-indicator">&#11088; Easy Level</div>
   </div>
   <div id="demo-overlay">
@@ -169,7 +169,7 @@
       <p>Drag each vehicle to the basket with the <strong>same color</strong>!</p>
     </div>
     <div class="demo-arrow">&#128071;</div>
-    <button id="demo-start-btn" onclick="dismissDemo()">Let's Go! &#128640;</button>
+    <button id="demo-start-btn" onclick="playSoundLetsGo(); dismissDemo()">Let's Go! &#128640;</button>
   </div>
   <div id="play-area">
     <div id="baskets-area"></div>
@@ -181,8 +181,8 @@
   <div class="win-title">&#127881; Amazing! &#127881;</div>
   <div style="font-size:32px;color:#888;font-weight:700;">You sorted everything!</div>
   <div class="win-buttons">
-    <button class="win-btn home" onclick="goHome()">&#127968;</button>
-    <button id="next-btn" class="win-btn next" onclick="goNextLevel()">&#9654;&#65039;</button>
+    <button class="win-btn home" onclick="playSoundHome(); goHome()">&#127968;</button>
+    <button id="next-btn" class="win-btn next" onclick="playSoundNext(); goNextLevel()">&#9654;&#65039;</button>
   </div>
 </div>
 
@@ -239,6 +239,83 @@ function playCelebration() {
     g.gain.linearRampToValueAtTime(0.4, t + 0.05);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
     o.start(t); o.stop(t + 0.4);
+  });
+}
+
+// -- BUTTON SOUNDS --
+// Easy button: bright soft boing
+function playSoundEasy() {
+  const a = getCtx();
+  const o = a.createOscillator(), g = a.createGain();
+  o.connect(g); g.connect(a.destination);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(400, a.currentTime);
+  o.frequency.exponentialRampToValueAtTime(700, a.currentTime + 0.12);
+  g.gain.setValueAtTime(0.35, a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.25);
+  o.start(); o.stop(a.currentTime + 0.25);
+}
+// Medium button: double blip
+function playSoundMedium() {
+  const a = getCtx();
+  [0, 0.1].forEach(delay => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type = 'sine'; o.frequency.value = 520 + delay * 800;
+    const t = a.currentTime + delay;
+    g.gain.setValueAtTime(0.3, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    o.start(t); o.stop(t + 0.12);
+  });
+}
+// Hard button: descending three-tone
+function playSoundHard() {
+  const a = getCtx();
+  [660, 550, 440].forEach((freq, i) => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type = 'triangle'; o.frequency.value = freq;
+    const t = a.currentTime + i * 0.09;
+    g.gain.setValueAtTime(0.28, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    o.start(t); o.stop(t + 0.14);
+  });
+}
+// Let's Go button: short rising whoosh
+function playSoundLetsGo() {
+  const a = getCtx();
+  const o = a.createOscillator(), g = a.createGain();
+  o.connect(g); g.connect(a.destination);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(300, a.currentTime);
+  o.frequency.exponentialRampToValueAtTime(900, a.currentTime + 0.18);
+  g.gain.setValueAtTime(0.3, a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.22);
+  o.start(); o.stop(a.currentTime + 0.22);
+}
+// Home button: soft low thud
+function playSoundHome() {
+  const a = getCtx();
+  const o = a.createOscillator(), g = a.createGain();
+  o.connect(g); g.connect(a.destination);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(280, a.currentTime);
+  o.frequency.exponentialRampToValueAtTime(120, a.currentTime + 0.18);
+  g.gain.setValueAtTime(0.3, a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.22);
+  o.start(); o.stop(a.currentTime + 0.22);
+}
+// Next button: bright forward pop
+function playSoundNext() {
+  const a = getCtx();
+  [500, 750].forEach((freq, i) => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type = 'sine'; o.frequency.value = freq;
+    const t = a.currentTime + i * 0.1;
+    g.gain.setValueAtTime(0.3, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.start(t); o.stop(t + 0.17);
   });
 }
 
@@ -468,7 +545,31 @@ function endDrag() {
       obj.el.style.transition='transform 0.22s ease-in, opacity 0.22s ease-in';
       obj.el.style.transform='scale(0)'; obj.el.style.opacity='0';
     }, 220);
+    // Speak the color name with the best available voice
+    const speak = () => {
+      const utter = new SpeechSynthesisUtterance(obj.color.charAt(0).toUpperCase() + obj.color.slice(1) + '!');
+      utter.rate = 0.85;
+      utter.pitch = 1.1;
+      utter.volume = 1;
+      // Prefer natural-sounding voices, prioritise en voices
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = ['Samantha','Karen','Moira','Tessa','Fiona','Victoria','Allison','Ava','Susan','Nicky'];
+      let picked = voices.find(v => preferred.some(name => v.name.includes(name)) && v.lang.startsWith('en'));
+      if (!picked) picked = voices.find(v => v.lang.startsWith('en-') && !v.name.toLowerCase().includes('compact'));
+      if (!picked) picked = voices.find(v => v.lang.startsWith('en'));
+      if (picked) utter.voice = picked;
+      window.speechSynthesis.speak(utter);
+    };
+    // Voices may not be loaded yet on first call
+    if (window.speechSynthesis.getVoices().length > 0) {
+      speak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => { speak(); window.speechSynthesis.onvoiceschanged = null; };
+    }
+
     placedCount++;
+    hintMode = false;
+    totalWrongCount = 0;
     if(placedCount===vehicles.length) setTimeout(triggerWin,700);
 
   } else if(dropped) {
